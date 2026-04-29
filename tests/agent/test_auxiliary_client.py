@@ -21,6 +21,7 @@ from agent.auxiliary_client import (
     _is_payment_error,
     _normalize_aux_provider,
     _try_payment_fallback,
+    _CODEX_AUX_MODEL,
     _resolve_auto,
 )
 
@@ -272,7 +273,7 @@ class TestTryCodex:
             client, model = _try_codex()
 
         assert client is not None
-        assert model == "gpt-5.2-codex"
+        assert model == _CODEX_AUX_MODEL
         assert mock_openai.call_args.kwargs["api_key"] == "codex-auth-token"
         assert mock_openai.call_args.kwargs["base_url"] == "https://chatgpt.com/backend-api/codex"
 
@@ -514,7 +515,7 @@ class TestGetTextAuxiliaryClient:
         from agent.auxiliary_client import CodexAuxiliaryClient
 
         assert isinstance(client, CodexAuxiliaryClient)
-        assert model == "gpt-5.2-codex"
+        assert model == _CODEX_AUX_MODEL
 
     def test_returns_none_when_nothing_available(self, monkeypatch):
         monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
@@ -836,11 +837,11 @@ class TestTryPaymentFallback:
         with patch("agent.auxiliary_client._try_openrouter", return_value=(None, None)), \
              patch("agent.auxiliary_client._try_nous", return_value=(None, None)), \
              patch("agent.auxiliary_client._try_custom_endpoint", return_value=(None, None)), \
-             patch("agent.auxiliary_client._try_codex", return_value=(mock_codex, "gpt-5.2-codex")), \
+             patch("agent.auxiliary_client._try_codex", return_value=(mock_codex, _CODEX_AUX_MODEL)), \
              patch("agent.auxiliary_client._read_main_provider", return_value="openrouter"):
             client, model, label = _try_payment_fallback("openrouter")
         assert client is mock_codex
-        assert model == "gpt-5.2-codex"
+        assert model == _CODEX_AUX_MODEL
         assert label == "openai-codex"
 
 
@@ -1360,14 +1361,14 @@ class TestAuxiliaryAuthRefreshRetry:
         with (
             patch(
                 "agent.auxiliary_client.resolve_vision_provider_client",
-                side_effect=[("openai-codex", failing_client, "gpt-5.2-codex"), ("openai-codex", fresh_client, "gpt-5.2-codex")],
+                side_effect=[("openai-codex", failing_client, _CODEX_AUX_MODEL), ("openai-codex", fresh_client, _CODEX_AUX_MODEL)],
             ),
             patch("agent.auxiliary_client._refresh_provider_credentials", return_value=True) as mock_refresh,
         ):
             resp = call_llm(
                 task="vision",
                 provider="openai-codex",
-                model="gpt-5.2-codex",
+                model=_CODEX_AUX_MODEL,
                 messages=[{"role": "user", "content": "hi"}],
             )
 
@@ -1384,14 +1385,14 @@ class TestAuxiliaryAuthRefreshRetry:
         fresh_client.chat.completions.create.return_value = _DummyResponse("fresh-non-vision")
 
         with (
-            patch("agent.auxiliary_client._resolve_task_provider_model", return_value=("openai-codex", "gpt-5.2-codex", None, None, None)),
-            patch("agent.auxiliary_client._get_cached_client", side_effect=[(stale_client, "gpt-5.2-codex"), (fresh_client, "gpt-5.2-codex")]),
+            patch("agent.auxiliary_client._resolve_task_provider_model", return_value=("openai-codex", _CODEX_AUX_MODEL, None, None, None)),
+            patch("agent.auxiliary_client._get_cached_client", side_effect=[(stale_client, _CODEX_AUX_MODEL), (fresh_client, _CODEX_AUX_MODEL)]),
             patch("agent.auxiliary_client._refresh_provider_credentials", return_value=True) as mock_refresh,
         ):
             resp = call_llm(
                 task="compression",
                 provider="openai-codex",
-                model="gpt-5.2-codex",
+                model=_CODEX_AUX_MODEL,
                 messages=[{"role": "user", "content": "hi"}],
             )
 
@@ -1439,14 +1440,14 @@ class TestAuxiliaryAuthRefreshRetry:
         with (
             patch(
                 "agent.auxiliary_client.resolve_vision_provider_client",
-                side_effect=[("openai-codex", failing_client, "gpt-5.2-codex"), ("openai-codex", fresh_client, "gpt-5.2-codex")],
+                side_effect=[("openai-codex", failing_client, _CODEX_AUX_MODEL), ("openai-codex", fresh_client, _CODEX_AUX_MODEL)],
             ),
             patch("agent.auxiliary_client._refresh_provider_credentials", return_value=True) as mock_refresh,
         ):
             resp = await async_call_llm(
                 task="vision",
                 provider="openai-codex",
-                model="gpt-5.2-codex",
+                model=_CODEX_AUX_MODEL,
                 messages=[{"role": "user", "content": "hi"}],
             )
 
